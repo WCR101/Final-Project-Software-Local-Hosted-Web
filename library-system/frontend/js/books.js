@@ -24,13 +24,16 @@ async function loadBooks() {
         <td>
           <div class="actions-cell">
             <button class="btn btn-ghost btn-sm" onclick="editBook(${b.id})">Edit</button>
-            <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteBook(${b.id},'${esc(b.title)}')">Delete</button>
+            ${b.status === 'OUT' 
+              ? `<button class="btn btn-ghost btn-sm" style="color:var(--text-3);cursor:not-allowed" disabled title="Cannot delete checked out books">Delete</button>`
+              : `<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteBook(${b.id},'${esc(b.title)}')">Delete</button>`
+            }
           </div>
         </td>
       </tr>
     `).join('');
   } catch (err) {
-    tbody.innerHTML = emptyRow(7, '⚠ ' + err.message);
+    tbody.innerHTML = emptyRow(7, 'Error: ' + err.message);
   }
 }
 
@@ -90,12 +93,14 @@ async function submitBook(e) {
 
 // ── Delete Book ───────────────────────────────────────────────────────
 function deleteBook(id, title) {
-  confirmAction('Delete Book', `Delete "${title}"? This cannot be undone.`, async () => {
+  confirmAction('Delete Book', `Delete "${title}"? This cannot be undone. Book must not be checked out.`, async () => {
     try {
       await Books.delete(id);
-      showToast('Book deleted');
+      showToast('Book deleted successfully');
       loadBooks();
-    } catch (err) { showToast(err.message, 'error'); }
+    } catch (err) { 
+      showToast(err.message || 'Cannot delete: Book may have active loans', 'error'); 
+    }
   });
 }
 

@@ -32,13 +32,16 @@ async function loadPatrons() {
                 ? `<button class="btn btn-ghost btn-sm" style="color:var(--green)" onclick="openPayFine(${p.id},${p.fine_balance})">Pay Fine</button>`
                 : ''}
               <button class="btn btn-ghost btn-sm" onclick="viewPatronLoans(${p.id},'${name}')" style="color:var(--blue)">Loans</button>
-              <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deletePatron(${p.id},'${name}')">Delete</button>
+              ${p.num_books > 0
+                ? `<button class="btn btn-ghost btn-sm" style="color:var(--text-3);cursor:not-allowed" disabled title="Cannot delete patrons with checked out books">Delete</button>`
+                : `<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deletePatron(${p.id},'${name}')">Delete</button>`
+              }
             </div>
           </td>
         </tr>`;
     }).join('');
   } catch (err) {
-    tbody.innerHTML = emptyRow(8, '⚠ ' + err.message);
+    tbody.innerHTML = emptyRow(8, 'Error: ' + err.message);
   }
 }
 
@@ -99,12 +102,14 @@ async function submitPatron(e) {
 
 // ── Delete Patron ─────────────────────────────────────────────────────
 function deletePatron(id, name) {
-  confirmAction('Delete Patron', `Remove "${name}" from the system? This cannot be undone.`, async () => {
+  confirmAction('Delete Patron', `Remove "${name}" from the system? This cannot be undone. Patron must not have checked out books.`, async () => {
     try {
       await Patrons.delete(id);
-      showToast('Patron deleted');
+      showToast('Patron deleted successfully');
       loadPatrons();
-    } catch (err) { showToast(err.message, 'error'); }
+    } catch (err) { 
+      showToast(err.message || 'Cannot delete: Patron may have active loans', 'error'); 
+    }
   });
 }
 

@@ -1,8 +1,16 @@
 const express = require('express');
-const { body, param, validationResult } = require('express-validator');
+const { body, param, validationResult, check } = require('express-validator');
 const db = require('../db');
 
 const router = express.Router();
+
+// Phone formatter: removes non-digits and formats as XXX-XXX-XXXX
+function formatPhone(phone) {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, '').substring(0, 10);
+  if (digits.length !== 10) return null;
+  return digits.slice(0, 3) + '-' + digits.slice(3, 6) + '-' + digits.slice(6);
+}
 
 const validate = (req, res, next) => {
   const errors = validationResult(req);
@@ -10,7 +18,8 @@ const validate = (req, res, next) => {
   next();
 };
 
-// GET /api/patrons
+// Auto-format phone numbers in database
+
 router.get('/', async (req, res, next) => {
   try {
     const { search, active } = req.query;
@@ -28,6 +37,13 @@ router.get('/', async (req, res, next) => {
     text += ' ORDER BY last_name, first_name';
 
     const { rows } = await db.query(text, params);
+    // Format all phone numbers for display
+    rows.forEach(row => {
+      if (row.phone) {
+        const formatted = formatPhone(row.phone);
+        if (formatted) row.phone = formatted;
+      }
+    });
     res.json(rows);
   } catch (err) { next(err); }
 });
@@ -56,13 +72,21 @@ router.get('/:id/loans', param('id').isInt(), validate, async (req, res, next) =
   } catch (err) { next(err); }
 });
 
-// POST /api/patrons
 router.post('/',
-  body('first_name').trim().notEmpty(),
-  body('last_name').trim().notEmpty(),
+  body('first_name').trim().notEmpty().isLength({ min: 1, max: 100 }),
+  body('last_name').trim().notEmpty().isLength({ min: 1, max: 100 }),
   body('email').optional().isEmail().normalizeEmail(),
-  body('phone').optional().trim(),
-  body('address').optional().trim(),
+  body('phone')
+    .optional({ nullable: true })
+    .trim()
+    .custom((phone) => {
+      if (!phone) return true;
+      const digits = phone.replace(/\D/g, '');
+      if (digits.length !== 10) throw new Error('Phone must be 10 digits');
+      return true;
+    })
+    .customSanitizer((phone) => formatPhone(phone)),
+  body('address').optional().trim().isLength({ min: 0, max: 255 }),
   body('membership_type').optional().isIn(['STANDARD','PREMIUM','STUDENT','SENIOR']),
   validate,
   async (req, res, next) => {
@@ -88,7 +112,16 @@ router.put('/:id',
   body('first_name').optional().trim().notEmpty(),
   body('last_name').optional().trim().notEmpty(),
   body('email').optional({ nullable: true }).isEmail().normalizeEmail(),
-  body('phone').optional({ nullable: true }).trim(),
+  body('phone')
+    .optional({ nullable: true })
+    .trim()
+    .custom((phone) => {
+      if (!phone) return true;
+      const digits = phone.replace(/\D/g, '');
+      if (digits.length !== 10) throw new Error('Phone must be 10 digits');
+      return true;
+    })
+    .customSanitizer((phone) => formatPhone(phone)),
   body('address').optional({ nullable: true }).trim(),
   body('membership_type').optional().isIn(['STANDARD','PREMIUM','STUDENT','SENIOR']),
   body('is_active').optional().isBoolean(),
@@ -139,8 +172,8 @@ router.delete('/:id', param('id').isInt(), validate, async (req, res, next) => {
 // POST /api/patrons/:id/pay-fine  – record a fine payment
 router.post('/:id/pay-fine',
   param('id').isInt(),
-  body('amount').isFloat({ min: 0.01 }),
-  body('note').optional().trim(),
+  body('amount').isFloat({ min: 0.01, max: 99999.99 }).toFloat(),
+  body('note').optional().trim().isLength({ min: 0, max: 255 }),
   validate,
   async (req, res, next) => {
     try {
@@ -148,8 +181,10 @@ router.post('/:id/pay-fine',
       if (!patronRows.length) return res.status(404).json({ error: 'Patron not found' });
       const patron = patronRows[0];
 
-      const { amount, note } = req.body;
-      const payment = Math.min(parseFloat(amount), parseFloat(patron.fine_balance));
+      let { amount, note } = req.body;
+      // Ensure amount is valid
+      amount = Math.max(0.01, Math.min(99999.99, parseFloat(amount)));
+      const payment = Math.min(amount, parseFloat(patron.fine_balance));
       if (payment <= 0) return res.status(400).json({ error: 'No outstanding fines' });
 
       const newBalance = Math.max(0, parseFloat(patron.fine_balance) - payment);

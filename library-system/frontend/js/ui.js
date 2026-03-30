@@ -98,6 +98,63 @@ function fmtMoney(n) {
   return '$' + parseFloat(n || 0).toFixed(2);
 }
 
+// ── Phone formatting ──────────────────────────────────────────────────
+function formatPhone(input) {
+  // Remove all non-digits
+  let digits = (input || '').replace(/\D/g, '');
+  // Keep only first 10 digits
+  digits = digits.substring(0, 10);
+  // Format as XXX-XXX-XXXX
+  if (digits.length === 0) return '';
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return digits.slice(0, 3) + '-' + digits.slice(3);
+  return digits.slice(0, 3) + '-' + digits.slice(3, 6) + '-' + digits.slice(6);
+}
+
+function isValidPhone(phone) {
+  const digits = (phone || '').replace(/\D/g, '');
+  return digits.length === 10;
+}
+
+// ── Input validation helpers ────────────────────────────────────────
+function sanitizeText(str, maxLen = 255) {
+  return (str || '')
+    .trim()
+    .substring(0, maxLen)
+    .replace(/[<>"']/g, ''); // Remove dangerous characters
+}
+
+function sanitizeName(str, maxLen = 100) {
+  return sanitizeText(str, maxLen).replace(/[^a-zA-Z\s'-]/g, '');
+}
+
+function sanitizeISBN(str) {
+  return (str || '').replace(/[^0-9-]/g, '').substring(0, 20);
+}
+
+function validateEmail(email) {
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return re.test(email);
+}
+
+function validatePositiveNumber(n, max = Infinity) {
+  const num = parseFloat(n);
+  return !isNaN(num) && num >= 0 && num <= max && Number.isFinite(num);
+}
+
+function sanitizeMoneyInput(value) {
+  let num = parseFloat(value) || 0;
+  // Clamp to 0-999999.99
+  num = Math.max(0, Math.min(999999.99, num));
+  return num.toFixed(2);
+}
+
+function formatISBN(isbn) {
+  const digits = (isbn || '').replace(/[^0-9-]/g, '');
+  if (digits.length < 10) return digits;
+  return digits.substring(0, 17); // Max ISBN-13 length
+}
+
 // ── Relative time ─────────────────────────────────────────────────────
 function relTime(iso) {
   const diff = Date.now() - new Date(iso).getTime();
@@ -108,3 +165,78 @@ function relTime(iso) {
   if (h < 24) return `${h}h ago`;
   return `${Math.floor(h/24)}d ago`;
 }
+
+// Auto-format phone on input
+document.addEventListener('DOMContentLoaded', () => {
+  // Phone inputs
+  const phoneInputs = document.querySelectorAll('input[id*="Phone"]');
+  phoneInputs.forEach(input => {
+    input.addEventListener('input', (e) => {
+      e.target.value = formatPhone(e.target.value);
+    });
+    input.addEventListener('blur', (e) => {
+      if (e.target.value && !isValidPhone(e.target.value)) {
+        showToast('Phone must be 10 digits', 'error');
+      }
+    });
+  });
+
+  // Name inputs (first/last name)
+  const nameInputs = document.querySelectorAll('input[id*="Name"]');
+  nameInputs.forEach(input => {
+    input.addEventListener('blur', (e) => {
+      e.target.value = sanitizeName(e.target.value);
+    });
+  });
+
+  // ISBN input
+  const isbnInput = document.getElementById('bookISBN');
+  if (isbnInput) {
+    isbnInput.addEventListener('input', (e) => {
+      e.target.value = formatISBN(e.target.value);
+    });
+  }
+
+  // Money inputs (cost, fines)
+  const moneyInputs = document.querySelectorAll('input[type="number"][id*="Cost"], input[type="number"][id*="Amount"]');
+  moneyInputs.forEach(input => {
+    input.addEventListener('blur', (e) => {
+      if (e.target.value) {
+        e.target.value = sanitizeMoneyInput(e.target.value);
+      }
+    });
+    input.addEventListener('input', (e) => {
+      // Prevent negative numbers in real-time
+      if (e.target.value < 0) e.target.value = 0;
+    });
+  });
+
+  // Integer inputs (days)
+  const intInputs = document.querySelectorAll('input[id*="Days"]');
+  intInputs.forEach(input => {
+    input.addEventListener('input', (e) => {
+      let val = parseInt(e.target.value) || 0;
+      if (val < 0) val = 0;
+      if (val > 90) val = 90;
+      e.target.value = val;
+    });
+  });
+
+  // Address/text inputs
+  const textInputs = document.querySelectorAll('input[id*="Address"], input[id*="Title"], input[id*="Author"]');
+  textInputs.forEach(input => {
+    input.addEventListener('blur', (e) => {
+      e.target.value = sanitizeText(e.target.value);
+    });
+  });
+
+  // Email inputs
+  const emailInputs = document.querySelectorAll('input[type="email"]');
+  emailInputs.forEach(input => {
+    input.addEventListener('blur', (e) => {
+      if (e.target.value && !validateEmail(e.target.value)) {
+        showToast('Invalid email format', 'error');
+      }
+    });
+  });
+});

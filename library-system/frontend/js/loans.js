@@ -37,7 +37,7 @@ async function loadLoans(extraParams = {}) {
         </tr>`;
     }).join('');
   } catch (err) {
-    tbody.innerHTML = emptyRow(8, '⚠ ' + err.message);
+    tbody.innerHTML = emptyRow(8, 'Error: ' + err.message);
   }
 }
 
@@ -50,7 +50,7 @@ async function loadOverdue() {
     const loans = await Loans.overdue();
 
     if (!loans.length) {
-      tbody.innerHTML = `<tr class="empty-row"><td colspan="8">🎉 No overdue books!</td></tr>`;
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="8">No overdue books</td></tr>`;
       return;
     }
 
@@ -76,7 +76,7 @@ async function loadOverdue() {
         </tr>`;
     }).join('');
   } catch (err) {
-    tbody.innerHTML = emptyRow(8, '⚠ ' + err.message);
+    tbody.innerHTML = emptyRow(8, 'Error: ' + err.message);
   }
 }
 
@@ -89,7 +89,7 @@ async function loadFines() {
     const patrons = await Fines.list();
 
     if (!patrons.length) {
-      tbody.innerHTML = `<tr class="empty-row"><td colspan="6">🎉 No outstanding fines!</td></tr>`;
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="6">No outstanding fines</td></tr>`;
       return;
     }
 
@@ -107,7 +107,7 @@ async function loadFines() {
         </td>
       </tr>`).join('');
   } catch (err) {
-    tbody.innerHTML = emptyRow(6, '⚠ ' + err.message);
+    tbody.innerHTML = emptyRow(6, 'Error: ' + err.message);
   }
 }
 

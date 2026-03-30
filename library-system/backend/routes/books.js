@@ -43,10 +43,10 @@ router.get('/:id', param('id').isInt(), validate, async (req, res, next) => {
 
 // POST /api/books
 router.post('/',
-  body('title').trim().notEmpty(),
-  body('author').trim().notEmpty(),
-  body('isbn').optional().trim(),
-  body('cost').optional().isFloat({ min: 0 }),
+  body('title').trim().notEmpty().isLength({ min: 1, max: 255 }),
+  body('author').trim().notEmpty().isLength({ min: 1, max: 255 }),
+  body('isbn').optional().trim().isLength({ min: 0, max: 20 }).matches(/^[0-9-]*$/),
+  body('cost').optional().isFloat({ min: 0, max: 9999.99 }).toFloat(),
   body('status').optional().isIn(['IN', 'OUT', 'LOST']),
   validate,
   async (req, res, next) => {
@@ -55,7 +55,7 @@ router.post('/',
       const { rows } = await db.query(
         `INSERT INTO books (title, author, isbn, cost, status)
          VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-        [title, author, isbn || null, cost, status]
+        [title, author, isbn || null, Math.max(0, Math.min(9999.99, parseFloat(cost))), status]
       );
       await db.query(
         `INSERT INTO audit_log (action, entity, entity_id, description)
@@ -70,10 +70,10 @@ router.post('/',
 // PUT /api/books/:id
 router.put('/:id',
   param('id').isInt(),
-  body('title').optional().trim().notEmpty(),
-  body('author').optional().trim().notEmpty(),
-  body('isbn').optional().trim(),
-  body('cost').optional().isFloat({ min: 0 }),
+  body('title').optional().trim().notEmpty().isLength({ min: 1, max: 255 }),
+  body('author').optional().trim().notEmpty().isLength({ min: 1, max: 255 }),
+  body('isbn').optional().trim().isLength({ min: 0, max: 20 }).matches(/^[0-9-]*$/),
+  body('cost').optional().isFloat({ min: 0, max: 9999.99 }).toFloat(),
   body('status').optional().isIn(['IN', 'OUT', 'LOST']),
   validate,
   async (req, res, next) => {
@@ -90,7 +90,7 @@ router.put('/:id',
           title  ?? b.title,
           author ?? b.author,
           isbn   !== undefined ? isbn : b.isbn,
-          cost   !== undefined ? cost : b.cost,
+          cost   !== undefined ? Math.max(0, Math.min(9999.99, parseFloat(cost))) : b.cost,
           status ?? b.status,
           req.params.id,
         ]

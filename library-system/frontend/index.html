@@ -243,19 +243,19 @@
       <div class="form-grid">
         <div class="form-group span-2">
           <label class="form-label">Title *</label>
-          <input class="form-input" id="bookTitle" required placeholder="Book title"/>
+          <input class="form-input" id="bookTitle" required placeholder="Book title" maxlength="255"/>
         </div>
         <div class="form-group span-2">
           <label class="form-label">Author *</label>
-          <input class="form-input" id="bookAuthor" required placeholder="Author name"/>
+          <input class="form-input" id="bookAuthor" required placeholder="Author name" maxlength="255"/>
         </div>
         <div class="form-group">
           <label class="form-label">ISBN</label>
-          <input class="form-input" id="bookISBN" placeholder="978-…"/>
+          <input class="form-input" id="bookISBN" placeholder="978-..." maxlength="20"/>
         </div>
         <div class="form-group">
           <label class="form-label">Cost ($)</label>
-          <input class="form-input" id="bookCost" type="number" min="0" step="0.01" placeholder="0.00"/>
+          <input class="form-input" id="bookCost" type="number" min="0" max="9999.99" step="0.01" placeholder="0.00"/>
         </div>
         <div class="form-group">
           <label class="form-label">Status</label>
@@ -286,19 +286,19 @@
       <div class="form-grid">
         <div class="form-group">
           <label class="form-label">First Name *</label>
-          <input class="form-input" id="patronFirstName" required/>
+          <input class="form-input" id="patronFirstName" required maxlength="100"/>
         </div>
         <div class="form-group">
           <label class="form-label">Last Name *</label>
-          <input class="form-input" id="patronLastName" required/>
+          <input class="form-input" id="patronLastName" required maxlength="100"/>
         </div>
         <div class="form-group span-2">
           <label class="form-label">Email</label>
-          <input class="form-input" id="patronEmail" type="email"/>
+          <input class="form-input" id="patronEmail" type="email" maxlength="255"/>
         </div>
         <div class="form-group">
           <label class="form-label">Phone</label>
-          <input class="form-input" id="patronPhone"/>
+          <input class="form-input" id="patronPhone" type="tel" placeholder="555-123-4567" maxlength="14"/>
         </div>
         <div class="form-group">
           <label class="form-label">Membership</label>
@@ -311,7 +311,7 @@
         </div>
         <div class="form-group span-2">
           <label class="form-label">Address</label>
-          <input class="form-input" id="patronAddress"/>
+          <input class="form-input" id="patronAddress" maxlength="255"/>
         </div>
       </div>
       <div class="modal-footer">
@@ -367,11 +367,11 @@
       <input type="hidden" id="payFinePatronId"/>
       <div class="form-group">
         <label class="form-label">Amount ($) *</label>
-        <input class="form-input" id="payFineAmount" type="number" min="0.01" step="0.01" required/>
+        <input class="form-input" id="payFineAmount" type="number" min="0.01" max="99999.99" step="0.01" required/>
       </div>
       <div class="form-group">
         <label class="form-label">Note</label>
-        <input class="form-input" id="payFineNote" placeholder="Optional note"/>
+        <input class="form-input" id="payFineNote" placeholder="Optional note" maxlength="255"/>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-ghost" onclick="closeModal('payFineModal')">Cancel</button>
