@@ -1,4 +1,4 @@
-# 📚 Athenaeum – Library Management System
+Athenaeum – Library Management System
 
 A full-stack, Dockerized library management web app built with:
 
@@ -43,7 +43,7 @@ library-system/
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running
@@ -68,7 +68,7 @@ First run takes ~2 minutes to pull images and initialize the database.
 
 ---
 
-## ⚙️ Environment Variables (`.env`)
+## Environment Variables (`.env`)
 
 | Variable            | Default           | Description                  |
 |---------------------|-------------------|------------------------------|
@@ -80,7 +80,7 @@ First run takes ~2 minutes to pull images and initialize the database.
 
 ---
 
-## 🔌 API Reference
+## API Reference
 
 ### Books
 | Method | Endpoint             | Description              |
@@ -122,7 +122,7 @@ First run takes ~2 minutes to pull images and initialize the database.
 
 ---
 
-## 📋 Business Rules
+##  Business Rules
 
 - **Max 6 books** per patron checked out at once
 - **Outstanding fines** block checkout
@@ -133,7 +133,7 @@ First run takes ~2 minutes to pull images and initialize the database.
 
 ---
 
-## 🛠 Development
+## Development
 
 ### Run backend locally (without Docker)
 
@@ -173,7 +173,7 @@ docker exec -it $(docker compose ps -q db) \
 
 ---
 
-## 🔧 Connecting to Supabase Cloud (Optional)
+## Connecting to Supabase Cloud (Optional)
 
 If you want to use Supabase cloud instead of the local Postgres container:
 
