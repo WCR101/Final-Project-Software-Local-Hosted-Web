@@ -122,7 +122,7 @@ First run takes ~2 minutes to pull images and initialize the database.
 
 ---
 
-##  Business Rules
+##  Customer Rules
 
 - **Max 6 books** per patron checked out at once
 - **Outstanding fines** block checkout
