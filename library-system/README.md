@@ -150,7 +150,7 @@ node server.js
 docker compose down
 ```
 
-### Reset database (⚠ deletes all data)
+### Reset database (deletes all data)
 
 ```bash
 docker compose down -v
