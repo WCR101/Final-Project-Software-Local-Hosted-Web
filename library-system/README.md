@@ -9,7 +9,7 @@ A full-stack, Dockerized library management web app built with:
 
 ---
 
-## 🗂 Project Structure
+## Project Structure
 
 ```
 library-system/
