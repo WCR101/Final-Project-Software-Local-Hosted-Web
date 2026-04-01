@@ -44,9 +44,7 @@ services:
   # Node.js + Express – Custom API & Business Logic
   # ─────────────────────────────────────────────
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: wesrodd/athenaeum-backend:latest
     restart: unless-stopped
     depends_on:
       db:
@@ -61,23 +59,17 @@ services:
       DB_USER: ${POSTGRES_USER:-libraryuser}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-librarypassword}
       NODE_ENV: production
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
 
   # ─────────────────────────────────────────────
   # Nginx – Serves static frontend & reverse proxies API
   # ─────────────────────────────────────────────
   frontend:
-    image: nginx:alpine
+    image: wesrodd/athenaeum-frontend:latest
     restart: unless-stopped
     depends_on:
       - backend
     ports:
       - "8080:80"
-    volumes:
-      - ./frontend:/usr/share/nginx/html:ro
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
 
 volumes:
   db_data:
