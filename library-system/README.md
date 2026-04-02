@@ -33,7 +33,7 @@ docker compose up -d
 - **Backend API**: http://localhost:4000
 - **Database**: localhost:5432 (libraryuser / librarypassword)
 
-## 📋 Features
+##  Features
 
 ✓ Full library management system
 ✓ Book catalog with ISBN tracking
@@ -128,7 +128,7 @@ docker compose down
 docker compose up -d
 ```
 
-## 📚 Database Schema
+##  Database Schema
 
 ### Tables
 - `books` – Book catalog (title, author, ISBN, cost, status)
@@ -162,7 +162,7 @@ All user inputs validated both frontend and backend:
 ```bash
 docker compose up -d          # Start all services
 docker compose down           # Stop all services
-docker compose down -v        # Stop & delete all data ⚠️
+docker compose down -v        # Stop & delete all data 
 ```
 
 ### Logs & Status
@@ -223,7 +223,7 @@ docker compose up -d         # Fresh start
 - Try http://127.0.0.1:8080 instead
 - Restart Docker Desktop
 
-## 📖 Usage Examples
+##  Usage Examples
 
 ### Add a Book
 1. Go to http://localhost:8080
@@ -284,7 +284,7 @@ This is a **local development system**. For production:
 - Add rate limiting
 - Implement CORS properly
 
-## 📝 Browser Compatibility
+##  Browser Compatibility
 
 Tested on:
 - ✓ Chrome/Chromium 90+
@@ -300,7 +300,7 @@ This system is designed to be:
 - **Duplicate-safe**: Same books allowed with different ISBNs
 - **Professional**: Clean UI, proper error handling, complete audit log
 
-Try to break it – you can't! 😊
+Try to break it – you can't! 
 
 ## License
 
