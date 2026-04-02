@@ -2,7 +2,7 @@
 
 A professional library management system built with Docker, Node.js, PostgreSQL, and modern web technologies.
 
-## 🚀 Quick Start (5 Minutes)
+## Quick Start (5 Minutes)
 
 ### Requirements
 - **Docker Desktop** installed (any OS: Windows, Mac, Linux)
@@ -48,7 +48,7 @@ docker compose up -d
 ✓ Prevents deletion of checked-out books/patrons
 ✓ Fully containerized with Docker
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────────────────────────────┐
@@ -69,7 +69,7 @@ docker compose up -d
 
 All services run in Docker containers and communicate via Docker network.
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 library-system/
@@ -108,7 +108,7 @@ library-system/
 └── README.md (this file)
 ```
 
-## 🔧 Configuration
+## Configuration
 
 Edit `.env` to customize:
 
@@ -144,7 +144,7 @@ docker compose up -d
 - All monetary values clamped to valid ranges
 - ISBN max 20 characters (numbers + hyphens only)
 
-## 🛡️ Input Validation
+## ouput Validation
 
 All user inputs validated both frontend and backend:
 - ✓ Phone numbers: 10 digits only, auto-formatted
@@ -156,7 +156,7 @@ All user inputs validated both frontend and backend:
 - ✓ Text fields: Max lengths enforced, XSS chars removed
 - ✓ Duplicate books allowed: Different ISBN = different copy
 
-## 🚀 Commands
+## Commands
 
 ### Start/Stop
 ```bash
@@ -190,7 +190,7 @@ docker compose exec backend sh
 docker compose exec frontend sh
 ```
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Port Already in Use
 ```bash
@@ -272,7 +272,7 @@ All available at http://localhost:4000
 - `POST /api/loans/:id/renew` – Renew loan (14 days)
 - `POST /api/loans/:id/lost` – Mark book lost
 
-## 🔒 Security Notes
+## Security Notes
 
 This is a **local development system**. For production:
 - Use strong database passwords
@@ -292,7 +292,7 @@ Tested on:
 - ✓ Safari 14+
 - ✓ Edge 90+
 
-## 🎓 For Professors
+##  For Professors
 
 This system is designed to be:
 - **Crash-proof**: All inputs validated, no injection attacks possible
@@ -302,11 +302,11 @@ This system is designed to be:
 
 Try to break it – you can't! 😊
 
-## 📄 License
+## License
 
 Local development system. Use as you wish.
 
-## 🤝 Support
+## Support
 
 **Immediate Help:**
 ```bash
