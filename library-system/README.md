@@ -245,7 +245,7 @@ docker compose up -d         # Fresh start
 3. Enter amount and optional note
 4. Click "Record Payment"
 
-## 📊 API Endpoints
+## API Endpoints
 
 All available at http://localhost:4000
 
@@ -292,16 +292,6 @@ Tested on:
 - ✓ Safari 14+
 - ✓ Edge 90+
 
-##  For Professors
-
-This system is designed to be:
-- **Crash-proof**: All inputs validated, no injection attacks possible
-- **Bulletproof**: Prevents orphaned data (books with loans, patrons with loans)
-- **Duplicate-safe**: Same books allowed with different ISBNs
-- **Professional**: Clean UI, proper error handling, complete audit log
-
-Try to break it – you can't! 
-
 ## License
 
 Local development system. Use as you wish.
@@ -321,6 +311,3 @@ docker compose ps            # Check container status
 4. Data lost → You ran `docker compose down -v`
 
 ---
-
-**Athenaeum v1.0** | Professional Library Management  
-Ready to run anywhere Docker is installed ✓
