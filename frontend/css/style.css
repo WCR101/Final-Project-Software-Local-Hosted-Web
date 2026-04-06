@@ -80,6 +80,20 @@ body {
   font-weight: 700;
   color: var(--accent);
   letter-spacing: 0.02em;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  transition: color var(--transition);
+}
+
+.brand-name:hover {
+  color: #d9b85c;
+}
+
+.brand-name:active {
+  transform: scale(0.98);
 }
 
 .brand-sub {
