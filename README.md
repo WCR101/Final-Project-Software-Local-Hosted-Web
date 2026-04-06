@@ -2,7 +2,7 @@
 
 A professional library management system built with Docker, Node.js, PostgreSQL, and modern web technologies.
 
-## 🚀 Quick Start (5 Minutes)
+## Quick Start (5 Minutes)
 
 ### Requirements
 - **Docker Desktop** installed (any OS: Windows, Mac, Linux)
@@ -33,7 +33,7 @@ docker compose up -d
 - **Backend API**: http://localhost:4000
 - **Database**: localhost:5432 (libraryuser / librarypassword)
 
-## 📋 Features
+## Features
 
 ✓ Full library management system
 ✓ Book catalog with ISBN tracking
@@ -48,7 +48,7 @@ docker compose up -d
 ✓ Prevents deletion of checked-out books/patrons
 ✓ Fully containerized with Docker
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────────────────────────────┐
@@ -69,7 +69,7 @@ docker compose up -d
 
 All services run in Docker containers and communicate via Docker network.
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 library-system/
@@ -108,7 +108,7 @@ library-system/
 └── README.md (this file)
 ```
 
-## 🔧 Configuration
+## Configuration
 
 Edit `.env` to customize:
 
@@ -128,7 +128,7 @@ docker compose down
 docker compose up -d
 ```
 
-## 📚 Database Schema
+## Database Schema
 
 ### Tables
 - `books` – Book catalog (title, author, ISBN, cost, status)
@@ -144,7 +144,7 @@ docker compose up -d
 - All monetary values clamped to valid ranges
 - ISBN max 20 characters (numbers + hyphens only)
 
-## 🛡️ Input Validation
+## Input Validation
 
 All user inputs validated both frontend and backend:
 - ✓ Phone numbers: 10 digits only, auto-formatted
@@ -156,13 +156,13 @@ All user inputs validated both frontend and backend:
 - ✓ Text fields: Max lengths enforced, XSS chars removed
 - ✓ Duplicate books allowed: Different ISBN = different copy
 
-## 🚀 Commands
+## Commands
 
 ### Start/Stop
 ```bash
 docker compose up -d          # Start all services
 docker compose down           # Stop all services
-docker compose down -v        # Stop & delete all data ⚠️
+docker compose down -v        # Stop & delete all data 
 ```
 
 ### Logs & Status
@@ -190,7 +190,7 @@ docker compose exec backend sh
 docker compose exec frontend sh
 ```
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Port Already in Use
 ```bash
@@ -223,7 +223,7 @@ docker compose up -d         # Fresh start
 - Try http://127.0.0.1:8080 instead
 - Restart Docker Desktop
 
-## 📖 Usage Examples
+## Usage Examples
 
 ### Add a Book
 1. Go to http://localhost:8080
@@ -245,7 +245,7 @@ docker compose up -d         # Fresh start
 3. Enter amount and optional note
 4. Click "Record Payment"
 
-## 📊 API Endpoints
+## API Endpoints
 
 All available at http://localhost:4000
 
@@ -272,7 +272,7 @@ All available at http://localhost:4000
 - `POST /api/loans/:id/renew` – Renew loan (14 days)
 - `POST /api/loans/:id/lost` – Mark book lost
 
-## 🔒 Security Notes
+## Security Notes
 
 This is a **local development system**. For production:
 - Use strong database passwords
@@ -284,7 +284,7 @@ This is a **local development system**. For production:
 - Add rate limiting
 - Implement CORS properly
 
-## 📝 Browser Compatibility
+## Browser Compatibility
 
 Tested on:
 - ✓ Chrome/Chromium 90+
@@ -292,21 +292,11 @@ Tested on:
 - ✓ Safari 14+
 - ✓ Edge 90+
 
-## 🎓 For Professors
-
-This system is designed to be:
-- **Crash-proof**: All inputs validated, no injection attacks possible
-- **Bulletproof**: Prevents orphaned data (books with loans, patrons with loans)
-- **Duplicate-safe**: Same books allowed with different ISBNs
-- **Professional**: Clean UI, proper error handling, complete audit log
-
-Try to break it – you can't! 😊
-
-## 📄 License
+## License
 
 Local development system. Use as you wish.
 
-## 🤝 Support
+## Support
 
 **Immediate Help:**
 ```bash
