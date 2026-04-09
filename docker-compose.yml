@@ -1,9 +1,4 @@
-version: "3.8"
-
 services:
-  # ─────────────────────────────────────────────
-  # Supabase – PostgreSQL (core database)
-  # ─────────────────────────────────────────────
   db:
     image: postgres:15-alpine
     restart: unless-stopped
@@ -22,9 +17,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # ─────────────────────────────────────────────
-  # Supabase – PostgREST (auto REST API on top of Postgres)
-  # ─────────────────────────────────────────────
   rest:
     image: postgrest/postgrest:v11.2.2
     restart: unless-stopped
@@ -40,17 +32,19 @@ services:
       PGRST_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters}
       PGRST_DB_USE_LEGACY_GUCS: "false"
 
-  # ─────────────────────────────────────────────
-  # Node.js + Express – Custom API & Business Logic
-  # ─────────────────────────────────────────────
   backend:
-    image: wesrodd/athenaeum-backend:latest
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
     ports:
       - "4000:4000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
     environment:
       PORT: 4000
       DB_HOST: db
@@ -58,11 +52,8 @@ services:
       DB_NAME: ${POSTGRES_DB:-librarydb}
       DB_USER: ${POSTGRES_USER:-libraryuser}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-librarypassword}
-      NODE_ENV: production
+      NODE_ENV: development
 
-  # ─────────────────────────────────────────────
-  # Nginx – Serves static frontend & reverse proxies API
-  # ─────────────────────────────────────────────
   frontend:
     image: wesrodd/athenaeum-frontend:latest
     restart: unless-stopped
@@ -70,6 +61,9 @@ services:
       - backend
     ports:
       - "8080:80"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
 
 volumes:
   db_data:
