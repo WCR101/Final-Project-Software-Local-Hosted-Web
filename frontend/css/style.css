@@ -3,19 +3,20 @@
    Aesthetic: Dark editorial / refined institutional
    ═══════════════════════════════════════════════════════ */
 
+/* ─── UI - Dark Blue/Yellow Color Scheme ─── */
 :root {
-  --bg:           #000000;
-  --bg-2:         #000000;
-  --bg-3:         #1a1a1a;
-  --bg-4:         #252320;
-  --border:       #2e2b27;
-  --border-light: #3a3733;
-  --text-1:       #f0ebe3;
-  --text-2:       #b8b0a6;
-  --text-3:       #7a7470;
+  --bg:           #0b1220;
+  --bg-2:         #0f1728;
+  --bg-3:         #131d31;
+  --bg-4:         #18233b;
+  --border:       #1f2c44;
+  --border-light: #2a3a57;
+  --text-1:       #f5f7fa;
+  --text-2:       #c9d4e0;
+  --text-3:       #8fa3ba;
   --accent:       #c9a84c;
   --accent-dim:   #8a6e2a;
-  --accent-glow:  rgba(201,168,76,0.15);
+  --accent-glow:  rgba(201,168,76,0.16);
   --green:        #4caf7a;
   --red:          #e05a5a;
   --orange:       #e07a3a;
@@ -28,6 +29,17 @@
   --font-body:    'DM Sans', system-ui, sans-serif;
   --transition:   0.18s ease;
 }
+
+.page-title {
+  letter-spacing: 0.02em;
+}
+
+.stat-label {
+  letter-spacing: 0.12em; 
+}
+
+
+
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -76,10 +88,10 @@ body {
 
 .brand-name {
   font-family: var(--font-display);
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--accent);
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
   background: none;
   border: none;
   cursor: pointer;
