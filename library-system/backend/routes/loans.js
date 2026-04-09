@@ -74,7 +74,7 @@ router.get('/overdue', async (req, res, next) => {
       FROM   loans l
       JOIN   books b   ON b.id = l.book_id
       JOIN   patrons p ON p.id = l.patron_id
-      WHERE  l.status = 'OVERDUE'
+      WHERE  l.status IN ('OVERDUE', 'LOST')
       ORDER  BY l.due_date`
     );
     res.json(rows);
@@ -191,6 +191,70 @@ router.post('/checkin',
   }
 );
 
+// ═══════════════════════════════════════════════════════════════════════
+// IMPORTANT: Specific routes (like /test/simulate-overdue) MUST come BEFORE
+// parameterized routes (like /:id/renew). Express matches routes in order.
+// ═══════════════════════════════════════════════════════════════════════
+
+// POST /api/loans/test/simulate-overdue - TEST ENDPOINT: mark a loan as overdue for testing
+router.post('/test/simulate-overdue', async (req, res, next) => {
+  const loanId = req.body.id || req.query.id;
+  if (!loanId || isNaN(loanId)) {
+    return res.status(400).json({ error: 'Loan ID is required in body or query' });
+  }
+
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query('SELECT * FROM loans WHERE id=$1 FOR UPDATE', [parseInt(loanId)]);
+    if (!rows.length) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Loan not found' }); }
+    const loan = rows[0];
+
+    if (loan.status === 'RETURNED') { await client.query('ROLLBACK'); return res.status(400).json({ error: 'Cannot mark returned loan as overdue' }); }
+    if (loan.status === 'LOST') { await client.query('ROLLBACK'); return res.status(400).json({ error: 'Cannot mark lost loan as overdue' }); }
+
+    // Calculate fine as if today is 7 days past due
+    const DAYS_OVERDUE = 7;
+    const calculatedFine = parseFloat((DAYS_OVERDUE * FINE_PER_DAY).toFixed(2));
+
+    // Set due date to 7 days in the past
+    const newDueDate = new Date();
+    newDueDate.setDate(newDueDate.getDate() - DAYS_OVERDUE);
+
+    await client.query(
+      `UPDATE loans SET status='OVERDUE', due_date=$1, fine_amount=$2, updated_at=NOW() WHERE id=$3`,
+      [newDueDate.toISOString().split('T')[0], calculatedFine, loan.id]
+    );
+
+    // Add fine to patron's balance
+    await client.query(
+      `UPDATE patrons SET fine_balance=fine_balance+$1, updated_at=NOW() WHERE id=$2`,
+      [calculatedFine, loan.patron_id]
+    );
+
+    // Get patron and book names for audit
+    const { rows: patronRows } = await client.query('SELECT * FROM patrons WHERE id=$1', [loan.patron_id]);
+    const { rows: bookRows } = await client.query('SELECT * FROM books WHERE id=$1', [loan.book_id]);
+    const patron = patronRows[0];
+    const book = bookRows[0];
+
+    // Audit log
+    await client.query(
+      'INSERT INTO audit_log (action,entity,entity_id,description) VALUES ($1,$2,$3,$4)',
+      ['TEST_OVERDUE', 'loan', loan.id, `[TEST] ${patron.first_name} ${patron.last_name} - "${book.title}" simulated as ${DAYS_OVERDUE} days overdue. Fine: $${calculatedFine}`]
+    );
+
+    await client.query('COMMIT');
+    res.json({ 
+      message: 'Loan simulated as overdue (testing)', 
+      days_overdue: DAYS_OVERDUE,
+      fine_calculated: calculatedFine,
+      new_due_date: newDueDate.toISOString().split('T')[0]
+    });
+  } catch (err) { await client.query('ROLLBACK'); next(err); }
+  finally { client.release(); }
+});
+
 // POST /api/loans/:id/renew
 router.post('/:id/renew', param('id').isInt(), validate, async (req, res, next) => {
   try {
@@ -198,6 +262,7 @@ router.post('/:id/renew', param('id').isInt(), validate, async (req, res, next) 
     if (!rows.length) return res.status(404).json({ error: 'Loan not found' });
     const loan = rows[0];
     if (loan.status === 'RETURNED') return res.status(400).json({ error: 'Cannot renew a returned loan' });
+    if (loan.status === 'LOST') return res.status(400).json({ error: 'Cannot renew a lost loan' });
 
     const newDue = new Date(loan.due_date);
     newDue.setDate(newDue.getDate() + LOAN_DAYS);
@@ -219,10 +284,17 @@ router.post('/:id/lost', param('id').isInt(), validate, async (req, res, next) =
     if (!rows.length) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Loan not found' }); }
     const loan = rows[0];
 
+    if (loan.status === 'RETURNED') { await client.query('ROLLBACK'); return res.status(400).json({ error: 'Cannot mark returned loan as lost' }); }
+    if (loan.status === 'LOST') { await client.query('ROLLBACK'); return res.status(400).json({ error: 'Book already marked as lost' }); }
+
     // Get book cost to charge patron
     const { rows: bookRows } = await client.query('SELECT * FROM books WHERE id=$1', [loan.book_id]);
     const book = bookRows[0];
     const replacementFee = parseFloat(book?.cost || 0);
+
+    // Get patron info for audit
+    const { rows: patronRows } = await client.query('SELECT * FROM patrons WHERE id=$1', [loan.patron_id]);
+    const patron = patronRows[0];
 
     await client.query(`UPDATE loans SET status='LOST', updated_at=NOW() WHERE id=$1`, [loan.id]);
     await client.query(`UPDATE books SET status='LOST', updated_at=NOW() WHERE id=$1`, [loan.book_id]);
@@ -231,8 +303,54 @@ router.post('/:id/lost', param('id').isInt(), validate, async (req, res, next) =
       [replacementFee, loan.patron_id]
     );
 
+    // Audit log
+    await client.query(
+      'INSERT INTO audit_log (action,entity,entity_id,description) VALUES ($1,$2,$3,$4)',
+      ['LOST', 'loan', loan.id, `${patron.first_name} ${patron.last_name} reported "${book.title}" lost. Replacement fee: $${replacementFee}`]
+    );
+
     await client.query('COMMIT');
     res.json({ message: 'Book marked as lost', replacement_fee: replacementFee });
+  } catch (err) { await client.query('ROLLBACK'); next(err); }
+  finally { client.release(); }
+});
+
+// POST /api/loans/:id/found - patron found a lost book, reduce fine by 50%
+router.post('/:id/found', param('id').isInt(), validate, async (req, res, next) => {
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query(
+      `SELECT l.*, b.title, p.first_name, p.last_name FROM loans l 
+       JOIN books b ON b.id=l.book_id JOIN patrons p ON p.id=l.patron_id WHERE l.id=$1 FOR UPDATE`,
+      [req.params.id]
+    );
+    if (!rows.length) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Loan not found' }); }
+    const loan = rows[0];
+
+    if (loan.status !== 'LOST') { await client.query('ROLLBACK'); return res.status(400).json({ error: 'Only lost books can be marked as found' }); }
+
+    const originalFine = parseFloat(loan.fine_amount || 0);
+    const reducedFine = parseFloat((originalFine * 0.5).toFixed(2));
+    const refund = originalFine - reducedFine;
+
+    // Update loan to RETURNED
+    await client.query('UPDATE loans SET status=$1, updated_at=NOW() WHERE id=$2', ['RETURNED', loan.id]);
+
+    // Reduce patron's fine balance by refund amount
+    await client.query('UPDATE patrons SET fine_balance=GREATEST(fine_balance - $1, 0), updated_at=NOW() WHERE id=$2', [refund, loan.patron_id]);
+
+    // Book status back to IN
+    await client.query('UPDATE books SET status=$1, updated_at=NOW() WHERE id=$2', ['IN', loan.book_id]);
+
+    // Audit log
+    await client.query(
+      'INSERT INTO audit_log (action,entity,entity_id,description) VALUES ($1,$2,$3,$4)',
+      ['FOUND', 'loan', loan.id, `${loan.first_name} ${loan.last_name} found lost book "${loan.title}". Fine reduced from $${originalFine} to $${reducedFine}`]
+    );
+
+    await client.query('COMMIT');
+    res.json({ message: 'Book found! Fine reduced by 50%', original_fine: originalFine, new_fine: reducedFine, refund: refund });
   } catch (err) { await client.query('ROLLBACK'); next(err); }
   finally { client.release(); }
 });
