@@ -1,4 +1,37 @@
-// ── Toast ────────────────────────────────────────────────────────────
+// ── Connection status styling ────────────────────────────────────────
+const style = document.createElement('style');
+style.textContent = `
+  #connStatus {
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+  }
+  #connStatus:hover {
+    background-color: var(--bg-3);
+  }
+  #connStatus .dot {
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+  #connStatus .dot.offline {
+    animation: none;
+  }
+`;
+document.head.appendChild(style);  // Prevent pasting malicious content
+  document.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"]').forEach(input => {
+    input.addEventListener('paste', (e) => {
+      const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+      // Check for suspicious patterns
+      if (/<|>|script|javascript|onclick/i.test(pastedText)) {
+        e.preventDefault();
+        showToast('Pasted content contains invalid characters', 'error');
+      }
+    });
+  });// ── Toast ────────────────────────────────────────────────────────────
 let toastTimer;
 function showToast(msg, type = 'success') {
   const el = document.getElementById('toast');
@@ -77,16 +110,29 @@ function memberBadge(type) {
   return `<span class="badge ${map[type] || 'badge-grey'}">${type}</span>`;
 }
 
-// ── Connectivity status ───────────────────────────────────────────────
+// ── Connectivity status (Real-time) ───────────────────────────────
 async function checkConnection() {
   const el = document.getElementById('connStatus');
   try {
-    await Health.check();
-    el.innerHTML = '<span class="dot online"></span> Connected';
-  } catch {
-    el.innerHTML = '<span class="dot offline"></span> Offline';
+    // Check backend health
+    const health = await Health.check();
+    
+    // Check if we have sample data
+    const books = await fetch('/api/books').then(r => r.json());
+    const patrons = await fetch('/api/patrons').then(r => r.json());
+    const hasSampleData = books.length > 0 && patrons.length > 0;
+    
+    el.innerHTML = `<span class="dot online"></span> Connected${hasSampleData ? ' • Sample data loaded' : ''}`;
+  } catch (err) {
+    el.innerHTML = `<span class="dot offline"></span> Offline • ${err.message}`;
   }
 }
+
+// Check connection on load and every 30 seconds
+document.addEventListener('DOMContentLoaded', () => {
+  checkConnection();
+  setInterval(checkConnection, 30000);
+});
 
 // ── Empty row ─────────────────────────────────────────────────────────
 function emptyRow(cols, msg = 'No records found') {
@@ -121,11 +167,15 @@ function sanitizeText(str, maxLen = 255) {
   return (str || '')
     .trim()
     .substring(0, maxLen)
-    .replace(/[<>"']/g, ''); // Remove dangerous characters
+    .replace(/[<>"'`]/g, '')  // Remove dangerous characters
+    .replace(/\s+/g, ' ');    // Normalize whitespace (prevent copy-paste spam)
 }
 
 function sanitizeName(str, maxLen = 100) {
-  return sanitizeText(str, maxLen).replace(/[^a-zA-Z\s'-]/g, '');
+  return sanitizeText(str, maxLen)
+    .replace(/[^a-zA-Z\s'-]/g, '')  // Only letters, spaces, hyphens, apostrophes
+    .replace(/([a-z])([A-Z])/g, '$1 $2')  // Separate camelCase
+    .trim();
 }
 
 function sanitizeISBN(str) {
@@ -181,9 +231,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Name inputs (first/last name)
+  // Name inputs (first/last name) - prevent sticky keys
   const nameInputs = document.querySelectorAll('input[id*="Name"]');
   nameInputs.forEach(input => {
+    // Prevent same character repeated (sticky keys)
+    input.addEventListener('input', (e) => {
+      const val = e.target.value;
+      // If same char repeated more than 5 times, warn
+      if (/([a-zA-Z])\1{5,}/.test(val)) {
+        showToast('Too many repeated characters - possible sticky key', 'error');
+        e.target.value = val.replace(/([a-zA-Z])\1{5,}/g, '$1$1');
+      }
+    });
     input.addEventListener('blur', (e) => {
       e.target.value = sanitizeName(e.target.value);
     });
@@ -222,9 +281,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Address/text inputs
+  // Address/text inputs - prevent spam
   const textInputs = document.querySelectorAll('input[id*="Address"], input[id*="Title"], input[id*="Author"]');
   textInputs.forEach(input => {
+    // Prevent repeated characters
+    input.addEventListener('input', (e) => {
+      const val = e.target.value;
+      if (/([a-zA-Z0-9])\1{10,}/.test(val)) {
+        showToast('Too many repeated characters detected', 'error');
+        e.target.value = val.replace(/([a-zA-Z0-9])\1{10,}/g, '$1$1');
+      }
+    });
     input.addEventListener('blur', (e) => {
       e.target.value = sanitizeText(e.target.value);
     });

@@ -45,12 +45,14 @@ const Patrons = {
 
 // ── Loans ────────────────────────────────────────────────────────────
 const Loans = {
-  list:     (params = {}) => apiFetch('/loans?' + new URLSearchParams(params)),
-  overdue:  ()            => apiFetch('/loans/overdue'),
-  checkout: (data)        => apiFetch('/loans/checkout', { method: 'POST', body: JSON.stringify(data) }),
-  checkin:  (loan_id)     => apiFetch('/loans/checkin',  { method: 'POST', body: JSON.stringify({ loan_id }) }),
-  renew:    (id)          => apiFetch(`/loans/${id}/renew`, { method: 'POST' }),
-  lost:     (id)          => apiFetch(`/loans/${id}/lost`,  { method: 'POST' }),
+  list:            (params = {}) => apiFetch('/loans?' + new URLSearchParams(params)),
+  overdue:         ()            => apiFetch('/loans/overdue'),
+  checkout:        (data)        => apiFetch('/loans/checkout', { method: 'POST', body: JSON.stringify(data) }),
+  checkin:         (loan_id)     => apiFetch('/loans/checkin',  { method: 'POST', body: JSON.stringify({ loan_id }) }),
+  renew:           (id)          => apiFetch(`/loans/${id}/renew`, { method: 'POST' }),
+  lost:            (id)          => apiFetch(`/loans/${id}/lost`,  { method: 'POST' }),
+  found:           (id)          => apiFetch(`/loans/${id}/found`, { method: 'POST' }),
+  testSimulateOverdue: (id)      => apiFetch('/loans/test/simulate-overdue', { method: 'POST', body: JSON.stringify({ id }) }),
 };
 
 // ── Fines ────────────────────────────────────────────────────────────
