@@ -27,9 +27,13 @@ async function loadLoans(extraParams = {}) {
           <td>${fine > 0 ? `<span class="fine-amount">${fmtMoney(fine)}</span>` : '—'}</td>
           <td>
             <div class="actions-cell">
-              ${l.status === 'ACTIVE' || l.status === 'OVERDUE' ? `
+              ${l.status === 'ACTIVE' ? `
                 <button class="btn btn-ghost btn-sm" style="color:var(--green)" onclick="doCheckin(${l.id})">Check In</button>
                 <button class="btn btn-ghost btn-sm" style="color:var(--blue)" onclick="doRenew(${l.id})">Renew</button>
+                <button class="btn btn-ghost btn-sm" style="color:var(--orange)" onclick="doMarkLost(${l.id})">Lost</button>
+                <button class="btn btn-ghost btn-sm" style="color:var(--orange);font-size:10px" onclick="doTestOverdue(${l.id})">TEST: Overdue</button>
+              ` : l.status === 'OVERDUE' ? `
+                <button class="btn btn-ghost btn-sm" style="color:var(--green)" onclick="doCheckin(${l.id})">Check In</button>
                 <button class="btn btn-ghost btn-sm" style="color:var(--orange)" onclick="doMarkLost(${l.id})">Lost</button>
               ` : ''}
             </div>
@@ -50,28 +54,32 @@ async function loadOverdue() {
     const loans = await Loans.overdue();
 
     if (!loans.length) {
-      tbody.innerHTML = `<tr class="empty-row"><td colspan="8">No overdue books</td></tr>`;
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="8">No overdue or lost books</td></tr>`;
       return;
     }
 
     tbody.innerHTML = loans.map(l => {
       const days = Math.abs(daysUntil(l.due_date));
       const fine = parseFloat(l.fine_amount || 0);
+      const isLost = l.status === 'LOST';
+      const isBold = isLost ? 'font-weight:600;' : '';
       return `
         <tr>
           <td><span style="color:var(--text-3)">#${l.id}</span></td>
-          <td><strong>${esc(l.book_title)}</strong></td>
+          <td><strong>${esc(l.book_title)}</strong>${isLost ? '<br><span style="font-size:10px;color:var(--red)">LOST</span>' : ''}</td>
           <td>${esc(l.patron_name)}</td>
           <td style="font-size:12px">${esc(l.patron_email || '—')}</td>
           <td style="color:var(--red);font-size:12px">${fmtDate(l.due_date)}</td>
-          <td><span class="badge badge-red">${days} day${days !== 1 ? 's' : ''}</span></td>
+          <td><span class="badge ${isLost ? 'badge-error' : 'badge-red'}">${isLost ? 'LOST' : days + ' day' + (days !== 1 ? 's' : '')}</span></td>
           <td><span class="fine-amount">${fmtMoney(fine)}</span></td>
           <td>
             <div class="actions-cell">
-              <button class="btn btn-ghost btn-sm" style="color:var(--green)" onclick="doCheckin(${l.id})">Check In</button>
-              <button class="btn btn-ghost btn-sm" style="color:var(--blue)" onclick="doRenew(${l.id})">Renew</button>
-              <button class="btn btn-ghost btn-sm" style="color:var(--orange)" onclick="doMarkLost(${l.id})">Lost</button>
-              <button class="btn btn-ghost btn-sm" style="color:var(--green);font-weight:600" onclick="doFoundBook(${l.id},${l.patron_id},'${esc(l.patron_name)}')">Found</button>
+              ${isLost ? `
+                <button class="btn btn-ghost btn-sm" style="color:var(--green);font-weight:600" onclick="doFoundBook(${l.id})">Found</button>
+              ` : `
+                <button class="btn btn-ghost btn-sm" style="color:var(--green)" onclick="doCheckin(${l.id})">Check In</button>
+                <button class="btn btn-ghost btn-sm" style="color:var(--orange)" onclick="doMarkLost(${l.id})">Lost</button>
+              `}
             </div>
           </td>
         </tr>`;
@@ -189,6 +197,7 @@ function doRenew(loanId) {
       const activePage = document.querySelector('.page.active')?.id;
       if (activePage === 'page-loans')   loadLoans();
       if (activePage === 'page-overdue') loadOverdue();
+      loadDashboard();
     } catch (err) { showToast(err.message, 'error'); }
   });
 }
@@ -202,44 +211,43 @@ function doMarkLost(loanId) {
       const activePage = document.querySelector('.page.active')?.id;
       if (activePage === 'page-loans')   loadLoans();
       if (activePage === 'page-overdue') loadOverdue();
+      loadFines();
       loadDashboard();
     } catch (err) { showToast(err.message, 'error'); }
   });
 }
 
- 
- / /   - -   F o u n d   B o o k   - - 
- f u n c t i o n   d o F o u n d B o o k ( l o a n I d ,   p a t r o n I d ,   p a t r o n N a m e )   { 
-     c o n f i r m A c t i o n ( 
-         ' B o o k   F o u n d ' , 
-         \  
- P a t r o n  
- \   +   p a t r o n N a m e   +   \  
- f o u n d  
- t h i s  
- l o s t  
- b o o k !  
- T h e  
- f i n e  
- w i l l  
- b e  
- r e d u c e d  
- b y  
- 5 0 % .  
- P r o c e e d ? \ , 
-         a s y n c   ( )   = >   { 
-             t r y   { 
-                 c o n s t   r e s   =   a w a i t   f e t c h ( \ / a p i / l o a n s / \   +   l o a n I d   +   \ / f o u n d \ ,   {   m e t h o d :   ' P O S T '   } ) . t h e n ( r   = >   r . j s o n ( ) ) ; 
-                 s h o w T o a s t ( \ F i n e  
- r e d u c e d  
- f r o m  
- \   +   f m t M o n e y ( r e s . o r i g i n a l _ f i n e )   +   \  
- t o  
- \   +   f m t M o n e y ( r e s . n e w _ f i n e )   +   \ ! \ ,   ' s u c c e s s ' ) ; 
-                 l o a d O v e r d u e ( ) ; 
-                 l o a d D a s h b o a r d ( ) ; 
-             }   c a t c h   ( e r r )   {   s h o w T o a s t ( e r r . m e s s a g e ,   ' e r r o r ' ) ;   } 
-         } 
-     ) ; 
- }  
- 
+// ── Found Book ────────────────────────────────────────────────────────
+function doFoundBook(loanId) {
+  confirmAction(
+    'Book Found',
+    'Mark this lost book as found? The patron\'s fine will be reduced by 50%.',
+    async () => {
+      try {
+        const res = await Loans.found(loanId);
+        showToast(`Fine reduced from ${fmtMoney(res.original_fine)} to ${fmtMoney(res.new_fine)}!`, 'success');
+        loadOverdue();
+        loadFines();
+        loadDashboard();
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+  );
+}
+
+// ── TEST: Simulate Overdue ────────────────────────────────────────────
+function doTestOverdue(loanId) {
+  confirmAction(
+    'TEST: Simulate Overdue',
+    'This loan will be marked as 7 days overdue for testing. A fine will be calculated and charged to the patron.',
+    async () => {
+      try {
+        const res = await Loans.testSimulateOverdue(loanId);
+        showToast(`Loan simulated as overdue (+7 days). Fine: ${fmtMoney(res.fine_calculated)}`, 'info');
+        loadLoans();
+        loadOverdue();
+        loadFines();
+        loadDashboard();
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+  );
+}

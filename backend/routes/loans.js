@@ -74,7 +74,7 @@ router.get('/overdue', async (req, res, next) => {
       FROM   loans l
       JOIN   books b   ON b.id = l.book_id
       JOIN   patrons p ON p.id = l.patron_id
-      WHERE  l.status = 'OVERDUE'
+      WHERE  l.status IN ('OVERDUE', 'LOST')
       ORDER  BY l.due_date`
     );
     res.json(rows);
@@ -191,6 +191,70 @@ router.post('/checkin',
   }
 );
 
+// ═══════════════════════════════════════════════════════════════════════
+// IMPORTANT: Specific routes (like /test/simulate-overdue) MUST come BEFORE
+// parameterized routes (like /:id/renew). Express matches routes in order.
+// ═══════════════════════════════════════════════════════════════════════
+
+// POST /api/loans/test/simulate-overdue - TEST ENDPOINT: mark a loan as overdue for testing
+router.post('/test/simulate-overdue', async (req, res, next) => {
+  const loanId = req.body.id || req.query.id;
+  if (!loanId || isNaN(loanId)) {
+    return res.status(400).json({ error: 'Loan ID is required in body or query' });
+  }
+
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query('SELECT * FROM loans WHERE id=$1 FOR UPDATE', [parseInt(loanId)]);
+    if (!rows.length) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Loan not found' }); }
+    const loan = rows[0];
+
+    if (loan.status === 'RETURNED') { await client.query('ROLLBACK'); return res.status(400).json({ error: 'Cannot mark returned loan as overdue' }); }
+    if (loan.status === 'LOST') { await client.query('ROLLBACK'); return res.status(400).json({ error: 'Cannot mark lost loan as overdue' }); }
+
+    // Calculate fine as if today is 7 days past due
+    const DAYS_OVERDUE = 7;
+    const calculatedFine = parseFloat((DAYS_OVERDUE * FINE_PER_DAY).toFixed(2));
+
+    // Set due date to 7 days in the past
+    const newDueDate = new Date();
+    newDueDate.setDate(newDueDate.getDate() - DAYS_OVERDUE);
+
+    await client.query(
+      `UPDATE loans SET status='OVERDUE', due_date=$1, fine_amount=$2, updated_at=NOW() WHERE id=$3`,
+      [newDueDate.toISOString().split('T')[0], calculatedFine, loan.id]
+    );
+
+    // Add fine to patron's balance
+    await client.query(
+      `UPDATE patrons SET fine_balance=fine_balance+$1, updated_at=NOW() WHERE id=$2`,
+      [calculatedFine, loan.patron_id]
+    );
+
+    // Get patron and book names for audit
+    const { rows: patronRows } = await client.query('SELECT * FROM patrons WHERE id=$1', [loan.patron_id]);
+    const { rows: bookRows } = await client.query('SELECT * FROM books WHERE id=$1', [loan.book_id]);
+    const patron = patronRows[0];
+    const book = bookRows[0];
+
+    // Audit log
+    await client.query(
+      'INSERT INTO audit_log (action,entity,entity_id,description) VALUES ($1,$2,$3,$4)',
+      ['TEST_OVERDUE', 'loan', loan.id, `[TEST] ${patron.first_name} ${patron.last_name} - "${book.title}" simulated as ${DAYS_OVERDUE} days overdue. Fine: $${calculatedFine}`]
+    );
+
+    await client.query('COMMIT');
+    res.json({ 
+      message: 'Loan simulated as overdue (testing)', 
+      days_overdue: DAYS_OVERDUE,
+      fine_calculated: calculatedFine,
+      new_due_date: newDueDate.toISOString().split('T')[0]
+    });
+  } catch (err) { await client.query('ROLLBACK'); next(err); }
+  finally { client.release(); }
+});
+
 // POST /api/loans/:id/renew
 router.post('/:id/renew', param('id').isInt(), validate, async (req, res, next) => {
   try {
@@ -198,6 +262,7 @@ router.post('/:id/renew', param('id').isInt(), validate, async (req, res, next) 
     if (!rows.length) return res.status(404).json({ error: 'Loan not found' });
     const loan = rows[0];
     if (loan.status === 'RETURNED') return res.status(400).json({ error: 'Cannot renew a returned loan' });
+    if (loan.status === 'LOST') return res.status(400).json({ error: 'Cannot renew a lost loan' });
 
     const newDue = new Date(loan.due_date);
     newDue.setDate(newDue.getDate() + LOAN_DAYS);
@@ -219,10 +284,17 @@ router.post('/:id/lost', param('id').isInt(), validate, async (req, res, next) =
     if (!rows.length) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Loan not found' }); }
     const loan = rows[0];
 
+    if (loan.status === 'RETURNED') { await client.query('ROLLBACK'); return res.status(400).json({ error: 'Cannot mark returned loan as lost' }); }
+    if (loan.status === 'LOST') { await client.query('ROLLBACK'); return res.status(400).json({ error: 'Book already marked as lost' }); }
+
     // Get book cost to charge patron
     const { rows: bookRows } = await client.query('SELECT * FROM books WHERE id=$1', [loan.book_id]);
     const book = bookRows[0];
     const replacementFee = parseFloat(book?.cost || 0);
+
+    // Get patron info for audit
+    const { rows: patronRows } = await client.query('SELECT * FROM patrons WHERE id=$1', [loan.patron_id]);
+    const patron = patronRows[0];
 
     await client.query(`UPDATE loans SET status='LOST', updated_at=NOW() WHERE id=$1`, [loan.id]);
     await client.query(`UPDATE books SET status='LOST', updated_at=NOW() WHERE id=$1`, [loan.book_id]);
@@ -231,44 +303,56 @@ router.post('/:id/lost', param('id').isInt(), validate, async (req, res, next) =
       [replacementFee, loan.patron_id]
     );
 
+    // Audit log
+    await client.query(
+      'INSERT INTO audit_log (action,entity,entity_id,description) VALUES ($1,$2,$3,$4)',
+      ['LOST', 'loan', loan.id, `${patron.first_name} ${patron.last_name} reported "${book.title}" lost. Replacement fee: $${replacementFee}`]
+    );
+
     await client.query('COMMIT');
     res.json({ message: 'Book marked as lost', replacement_fee: replacementFee });
   } catch (err) { await client.query('ROLLBACK'); next(err); }
   finally { client.release(); }
 });
 
-module.exports = router;
+// POST /api/loans/:id/found - patron found a lost book, reduce fine by 50%
+router.post('/:id/found', param('id').isInt(), validate, async (req, res, next) => {
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query(
+      `SELECT l.*, b.title, p.first_name, p.last_name FROM loans l 
+       JOIN books b ON b.id=l.book_id JOIN patrons p ON p.id=l.patron_id WHERE l.id=$1 FOR UPDATE`,
+      [req.params.id]
+    );
+    if (!rows.length) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Loan not found' }); }
+    const loan = rows[0];
 
- / /   P O S T   / a p i / l o a n s / : i d / f o u n d   -   p a t r o n   f o u n d   a   l o s t   b o o k ,   r e d u c e   f i n e   b y   5 0 % 
- r o u t e r . p o s t ( ' / : i d / f o u n d ' ,   p a r a m ( ' i d ' ) . i s I n t ( ) ,   v a l i d a t e ,   a s y n c   ( r e q ,   r e s ,   n e x t )   = >   { 
-     c o n s t   c l i e n t   =   a w a i t   d b . c o n n e c t ( ) ; 
-     t r y   { 
-         a w a i t   c l i e n t . q u e r y ( ' B E G I N ' ) ; 
-         c o n s t   {   r o w s   }   =   a w a i t   c l i e n t . q u e r y ( ' S E L E C T   l . * ,   p . f i r s t _ n a m e ,   p . l a s t _ n a m e   F R O M   l o a n s   l   J O I N   p a t r o n s   p   O N   p . i d = l . p a t r o n _ i d   W H E R E   l . i d = \   F O R   U P D A T E ' ,   [ r e q . p a r a m s . i d ] ) ; 
-         i f   ( ! r o w s . l e n g t h )   {   a w a i t   c l i e n t . q u e r y ( ' R O L L B A C K ' ) ;   r e t u r n   r e s . s t a t u s ( 4 0 4 ) . j s o n ( {   e r r o r :   ' L o a n   n o t   f o u n d '   } ) ;   } 
-         c o n s t   l o a n   =   r o w s [ 0 ] ; 
- 
-         i f   ( l o a n . s t a t u s   ! = =   ' L O S T ' )   {   a w a i t   c l i e n t . q u e r y ( ' R O L L B A C K ' ) ;   r e t u r n   r e s . s t a t u s ( 4 0 0 ) . j s o n ( {   e r r o r :   ' O n l y   l o s t   b o o k s   c a n   b e   m a r k e d   a s   f o u n d '   } ) ;   } 
- 
-         c o n s t   o r i g i n a l F i n e   =   p a r s e F l o a t ( l o a n . f i n e _ a m o u n t   | |   0 ) ; 
-         c o n s t   r e d u c e d F i n e   =   p a r s e F l o a t ( ( o r i g i n a l F i n e   *   0 . 5 ) . t o F i x e d ( 2 ) ) ;   / /   5 0 %   r e d u c t i o n 
-         c o n s t   r e f u n d   =   o r i g i n a l F i n e   -   r e d u c e d F i n e ; 
- 
-         / /   U p d a t e   l o a n   t o   R E T U R N E D 
-         a w a i t   c l i e n t . q u e r y ( ' U P D A T E   l o a n s   S E T   s t a t u s = \ ,   u p d a t e d _ a t = N O W ( )   W H E R E   i d = \ ' ,   [ ' R E T U R N E D ' ,   l o a n . i d ] ) ; 
- 
-         / /   R e d u c e   p a t r o n ' s   f i n e   b a l a n c e   b y   r e f u n d   a m o u n t 
-         a w a i t   c l i e n t . q u e r y ( ' U P D A T E   p a t r o n s   S E T   f i n e _ b a l a n c e = G R E A T E S T ( f i n e _ b a l a n c e   -   \ ,   0 ) ,   u p d a t e d _ a t = N O W ( )   W H E R E   i d = \ ' ,   [ r e f u n d ,   l o a n . p a t r o n _ i d ] ) ; 
- 
-         / /   B o o k   s t a t u s   b a c k   t o   I N 
-         a w a i t   c l i e n t . q u e r y ( ' U P D A T E   b o o k s   S E T   s t a t u s = \ ,   u p d a t e d _ a t = N O W ( )   W H E R E   i d = \ ' ,   [ ' I N ' ,   l o a n . b o o k _ i d ] ) ; 
- 
-         a w a i t   c l i e n t . q u e r y ( ' I N S E R T   I N T O   a u d i t _ l o g   ( a c t i o n , e n t i t y , e n t i t y _ i d , d e s c r i p t i o n )   V A L U E S   ( \ , \ , \ , \ ) ' ,   [ ' F O U N D ' ,   ' l o a n ' ,   l o a n . i d ,   \ \   \   f o u n d   l o s t   b o o k .   F i n e   r e d u c e d   f r o m   \ $ \   t o   \ $ \ \ ] ) ; 
- 
-         a w a i t   c l i e n t . q u e r y ( ' C O M M I T ' ) ; 
-         r e s . j s o n ( {   m e s s a g e :   ' B o o k   f o u n d !   F i n e   r e d u c e d   b y   5 0 % ' ,   o r i g i n a l _ f i n e :   o r i g i n a l F i n e ,   n e w _ f i n e :   r e d u c e d F i n e ,   r e f u n d :   r e f u n d   } ) ; 
-     }   c a t c h   ( e r r )   {   a w a i t   c l i e n t . q u e r y ( ' R O L L B A C K ' ) ;   n e x t ( e r r ) ;   } 
-     f i n a l l y   {   c l i e n t . r e l e a s e ( ) ;   } 
- } ) ; 
-  
- 
+    if (loan.status !== 'LOST') { await client.query('ROLLBACK'); return res.status(400).json({ error: 'Only lost books can be marked as found' }); }
+
+    const originalFine = parseFloat(loan.fine_amount || 0);
+    const reducedFine = parseFloat((originalFine * 0.5).toFixed(2));
+    const refund = originalFine - reducedFine;
+
+    // Update loan to RETURNED
+    await client.query('UPDATE loans SET status=$1, updated_at=NOW() WHERE id=$2', ['RETURNED', loan.id]);
+
+    // Reduce patron's fine balance by refund amount
+    await client.query('UPDATE patrons SET fine_balance=GREATEST(fine_balance - $1, 0), updated_at=NOW() WHERE id=$2', [refund, loan.patron_id]);
+
+    // Book status back to IN
+    await client.query('UPDATE books SET status=$1, updated_at=NOW() WHERE id=$2', ['IN', loan.book_id]);
+
+    // Audit log
+    await client.query(
+      'INSERT INTO audit_log (action,entity,entity_id,description) VALUES ($1,$2,$3,$4)',
+      ['FOUND', 'loan', loan.id, `${loan.first_name} ${loan.last_name} found lost book "${loan.title}". Fine reduced from $${originalFine} to $${reducedFine}`]
+    );
+
+    await client.query('COMMIT');
+    res.json({ message: 'Book found! Fine reduced by 50%', original_fine: originalFine, new_fine: reducedFine, refund: refund });
+  } catch (err) { await client.query('ROLLBACK'); next(err); }
+  finally { client.release(); }
+});
+
+module.exports = router;

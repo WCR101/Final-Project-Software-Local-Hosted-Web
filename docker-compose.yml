@@ -1,4 +1,8 @@
+version: "3.8"
 services:
+  # ─────────────────────────────────────────────
+  # Supabase – PostgreSQL (core database)
+  # ─────────────────────────────────────────────
   db:
     image: postgres:15-alpine
     restart: unless-stopped
@@ -17,6 +21,9 @@ services:
       timeout: 5s
       retries: 5
 
+  # ─────────────────────────────────────────────
+  # Supabase – PostgREST (auto REST API on top of Postgres)
+  # ─────────────────────────────────────────────
   rest:
     image: postgrest/postgrest:v11.2.2
     restart: unless-stopped
@@ -32,10 +39,14 @@ services:
       PGRST_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters}
       PGRST_DB_USE_LEGACY_GUCS: "false"
 
+  # ─────────────────────────────────────────────
+  # Node.js + Express – Custom API & Business Logic
+  # ─────────────────────────────────────────────
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    image: wesrodd/athenaeum-backend:latest
     restart: unless-stopped
     depends_on:
       db:
@@ -54,7 +65,13 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD:-librarypassword}
       NODE_ENV: development
 
+  # ─────────────────────────────────────────────
+  # Nginx – Serves static frontend & reverse proxies API
+  # ─────────────────────────────────────────────
   frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     image: wesrodd/athenaeum-frontend:latest
     restart: unless-stopped
     depends_on:
@@ -62,8 +79,7 @@ services:
     ports:
       - "8080:80"
     volumes:
-      - ./frontend/src:/app/src
-      - ./frontend/public:/app/public
+      - ./frontend:/usr/share/nginx/html
 
 volumes:
   db_data:
