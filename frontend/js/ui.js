@@ -307,3 +307,29 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 });
+
+const savedTheme = localStorage.getItem("theme");
+// user saved theme preference
+if (savedTheme) {
+  if (savedTheme === "light") {
+    document.body.classList.add("light-mode");
+  }
+} else {
+  // no saved preference
+  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+
+  if (!prefersDark) {
+    document.body.classList.add("light-mode");
+  }
+}
+// click to toggle theme
+const toggle = document.getElementById("theme-toggle");
+
+toggle.addEventListener("click", () => {
+  document.body.classList.toggle("light-mode");
+
+  const isLight = document.body.classList.contains("light-mode");
+
+  localStorage.setItem("theme", isLight ? "light" : "dark");
+});
+
