@@ -37,7 +37,9 @@
 
 .stat-label {
   letter-spacing: 0.12em;
+   
 }
+
 .light-mode {
   --bg:           #f7f9fc;
   --bg-2:         #ffffff;
