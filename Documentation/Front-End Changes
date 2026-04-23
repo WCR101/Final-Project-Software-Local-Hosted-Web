@@ -1,0 +1,100 @@
+Changes made to style.css
+:root {
+  --bg:           #1f1f1f;
+  --bg-2:         #262626;
+  --bg-3:         #2e2e2e;
+  --bg-4:         #383838;
+  --border:       #3a3a3a;
+  --border-light: #4a4a4a;
+  --text-1:       #f5f5f5;
+  --text-2:       #d0d0d0;
+  --text-3:       #9a9a9a;
+
+After 
+:root {
+  --bg:           #0b1220;  
+  --bg-2:         #0f1728;
+  --bg-3:         #131d31;
+  --bg-4:         #18233b;
+  --border:       #1f2c44;
+  --border-light: #2a3a57;
+  --text-1:       #f5f7fa;
+  --text-2:       #c9d4e0;
+  --text-3:       #8fa3b8;
+  --accent:       #c9a84c;
+  --accent-dim:   #8a6e2a;
+  --accent-glow:  rgba(201,168,76,0.16);
+
+
+Added
+
+.page-title {
+  letter-spacing: 0.02em;
+}
+
+.stat-label {
+  letter-spacing: 0.12em; 
+}
+
+
+Added
+
+<!-- ═══════════════ THEME TOGGLE ═══════════════ -->
+    </button>
+    <button id="theme-toggle">🌗</button>
+    <span class="nav-icon"></span>
+  </nav>
+ 
+
+Added
+
+.light-mode {
+  --bg:           #f7f9fc;
+  --bg-2:         #ffffff;
+  --bg-3:         #eef2f7;
+  --bg-4:         #e3e9f2;
+
+  --border:       #d6dde8;
+  --border-light: #c2ccda;
+
+  --text-1:       #0b1220;
+  --text-2:       #2a3a57;
+  --text-3:       #5a6b85;
+
+  --accent:       #c9a84c;
+  --accent-dim:   #8a6e2a;
+  --accent-glow:  rgba(201,168,76,0.2);
+
+  --shadow:       0 4px 16px rgba(0,0,0,0.08);
+
+}
+
+
+Added to UI.js
+
+const savedTheme = localStorage.getItem("theme");
+// user saved theme preference
+if (savedTheme) {
+  if (savedTheme === "light") {
+    document.body.classList.add("light-mode");
+  }
+} else {
+  // no saved preference
+  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+
+  if (!prefersDark) {
+    document.body.classList.add("light-mode");
+  }
+}
+// click to toggle theme
+const toggle = document.getElementById("theme-toggle");
+
+toggle.addEventListener("click", () => {
+  document.body.classList.toggle("light-mode");
+
+  const isLight = document.body.classList.contains("light-mode");
+
+  localStorage.setItem("theme", isLight ? "light" : "dark");
+});
+
+
