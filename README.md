@@ -190,7 +190,7 @@ docker compose exec backend sh
 docker compose exec frontend sh
 ```
 
- Troubleshooting
+## Troubleshooting
 
 ### Port Already in Use
 ```bash
